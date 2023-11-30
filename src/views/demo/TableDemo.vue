@@ -86,18 +86,20 @@ export default {
         },
       ],
       currentRow: null,
+      timer: null,
     }
   },
 
   created() {
+    console.log("创建")
     let i = 0
-    setInterval(() => {
+    this.timer = setInterval(() => {
       let cur = this.tableData[i]
       this.setCurrent(cur)
       // setTimeout(() => {
-        let top = document.getElementsByClassName("current-row")[0].offsetTop
-        console.log("top",top);
-        this.$refs.singleTable.scrollTo({ top: top, behavior: 'smooth' })
+      let top = document.getElementsByClassName("current-row")[0].offsetTop
+      console.log("top", top)
+      this.$refs.singleTable.scrollTo({ top: top, behavior: "smooth" })
       // }, 500)
 
       i++
@@ -105,6 +107,10 @@ export default {
         i = 0
       }
     }, 1000)
+  },
+  beforeUnmount() {
+    console.log("销毁")
+    clearInterval(this.timer)
   },
 
   methods: {

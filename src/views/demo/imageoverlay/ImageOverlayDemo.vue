@@ -1,13 +1,37 @@
 <template>
   <div class="container">
-    <div class="img-Box" :key="imageInfo.url">
-      <div class="img" id="imgBox">
-        <!-- 用来获取原图宽高 -->
-        <img id="img_size" :src="imageInfo.url" alt="" v-show="false" />
-        <div id="main_img" :style="`background-image:url(${imageInfo.url})`"></div>
+    <div class="left">
+      <div class="img-Box" :key="imageInfo.url">
+        <div class="img" id="imgBox">
+          <!-- 用来获取原图宽高 -->
+          <img id="img_size" :src="imageInfo.url" alt="" v-show="false" />
+          <div id="main_img" :style="`background-image:url(${imageInfo.url})`"></div>
 
-        <!-- 用来大图预览 -->
-        <!-- <image-viewer v-if="bigImageVisible" :on-close="closeViewer" :url-list="[fileUrl + curImgInfo.savePath]" /> -->
+          <!-- 用来大图预览 -->
+          <!-- <image-viewer v-if="bigImageVisible" :on-close="closeViewer" :url-list="[fileUrl + curImgInfo.savePath]" /> -->
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <title>标注列表</title>
+      <div class="list-box" style="height: calc(100% - 20px)">
+        <el-timeline reverse>
+          <el-timeline-item v-for="(item, i) in labelList" :key="i" :timestamp="item.createTime" color="#F89B02">
+            <div class="box-container">
+              <div class="box-left">
+                <p>positionX：{{ item.positionX }}</p>
+                <p>positionY：{{ item.positionY }}</p>
+                <p>width：{{ item.width }}</p>
+                <p>height：{{ item.height }}</p>
+              </div>
+              <div class="box-right">
+                <el-button type="primary" size="small" @click="handleClickPosition(item)"> 定位 </el-button>
+                <el-button type="danger" size="small" @click="handleClickDeleteLabel(item, i)"> 删除 </el-button>
+              </div>
+            </div>
+          </el-timeline-item>
+        </el-timeline>
       </div>
     </div>
 
@@ -18,8 +42,8 @@
       <p>Y: {{ addform.positionY }}</p>
       <p>width: {{ addform.width }}</p>
       <p>height: {{ addform.height }}</p>
+      <el-button @click="handleClickSave">保存</el-button>
     </el-dialog>
-
   </div>
 </template>
 
@@ -45,17 +69,20 @@ export default {
         width: 0,
         height: 0,
       },
+      labelList: [],
 
       addLabelVisible: false,
     }
   },
 
   created() {},
-  mounted() {
+  mounted() {},
+  beforeMount() {
+    console.log("渲染之前")
     this.initImageOverlay()
   },
-  beforeDestroy() {
-    console.log("页面销毁")
+  beforeUnmount() {
+    console.log("销毁之前")
     this.removeImageOverlay()
   },
 
@@ -214,35 +241,199 @@ export default {
         ab && document.getElementById("main_img").removeChild(ab)
       }
     },
+
+    handleClickSave() {
+      console.log(this.addform)
+      var labelImageBox = document.getElementById("main_img")
+
+      let widthScale = document.getElementById("img_size").naturalWidth / document.getElementById("main_img").offsetWidth
+      let heightScale = document.getElementById("img_size").naturalHeight / document.getElementById("main_img").offsetHeight
+      let renderScale = Math.max(widthScale, heightScale)
+      // 在页面创建 box
+      var defect_box = document.createElement("div")
+      defect_box.id = "defect_box"
+      // defect_box.className = "box";
+      defect_box.style.top = this.addform.positionY / renderScale + "px"
+      defect_box.style.left = this.addform.positionX / renderScale + "px"
+      defect_box.style.width = this.addform.width / renderScale + "px"
+      defect_box.style.height = this.addform.height / renderScale + "px"
+
+      defect_box.style.position = "absolute"
+      defect_box.style.border = "2px solid rgb(255 25 0)"
+      defect_box.style.zIndex = "3000"
+      labelImageBox.appendChild(defect_box)
+
+      this.labelList.push({ ...this.addform, createTime: new Date().toLocaleString() })
+      this.addLabelVisible = false
+    },
+
+    // 点击定位
+    handleClickPosition(info) {
+      // return
+      console.log(info)
+
+      var labelImageBox = document.getElementById("main_img")
+
+      // 移除上一个
+      var preDefectBox = document.getElementById("active_defect_box")
+      if (preDefectBox) {
+        labelImageBox.removeChild(preDefectBox)
+      }
+
+      // -------------------------添加缺陷框start-------------------------------------
+      let widthScale = document.getElementById("img_size").naturalWidth / document.getElementById("main_img").offsetWidth
+      let heightScale = document.getElementById("img_size").naturalHeight / document.getElementById("main_img").offsetHeight
+      let renderScale = Math.max(widthScale, heightScale)
+      // 在页面创建 box
+      var active_defect_box = document.createElement("div")
+      active_defect_box.id = "active_defect_box"
+      // active_defect_box.className = "box";
+      active_defect_box.style.top = info.positionY / renderScale + "px"
+      active_defect_box.style.left = info.positionX / renderScale + "px"
+      active_defect_box.style.width = info.width / renderScale + "px"
+      active_defect_box.style.height = info.height / renderScale + "px"
+
+      console.log(renderScale, info.positionX, info.positionY, info.width, info.height)
+
+      active_defect_box.style.position = "absolute"
+      active_defect_box.style.border = "2px solid rgb(27 255 0)"
+      active_defect_box.style.zIndex = "3000"
+      labelImageBox.appendChild(active_defect_box)
+      // -------------------------end-------------------------------------
+
+      // -------------------------缺陷框定位-------------------------------
+      // 首先移除缩放效果，设置比例为1，确保下方代码执行之前，图片回到原始比例，动画会影响计算结果
+      this.scale = 1
+      document.getElementById("imgBox").style.transition = "none"
+      document.getElementById("imgBox").style.transform = `scale(1)`
+
+      const imgBox = document.getElementById("imgBox")
+      const mainImg = document.getElementById("main_img")
+      const activeDefectBox = document.getElementById("active_defect_box")
+
+      const imgBoxRect = imgBox.getBoundingClientRect()
+      const mainImgRect = mainImg.getBoundingClientRect()
+      const activeDefectBoxRect = activeDefectBox.getBoundingClientRect()
+
+      // 计算框相对于图片中心的距离
+      const offsetX = mainImgRect.width / 2 - info.positionX / renderScale - info.width / renderScale / 2
+      const offsetY = mainImgRect.height / 2 - info.positionY / renderScale - info.height / renderScale / 2
+
+      // 图片相对于外层容器中心的距离
+      const mainImgLeft = (imgBoxRect.width - mainImgRect.width) / 2
+      const mainImgTop = (imgBoxRect.height - mainImgRect.height) / 2
+
+      const moveX = mainImgLeft + offsetX
+      const moveY = mainImgTop + offsetY
+
+      mainImg.style.left = moveX + "px"
+      mainImg.style.top = moveY + "px"
+
+      active_defect_box = null
+      // 再次添加动画效果
+      document.getElementById("imgBox").style.transition = "transform 0.5s linear, width 0.5s linear, height 0.5s linear"
+
+      // 计算当前框应该放大的比例
+      const activeDefectBoxWidthScale = mainImgRect.width / activeDefectBoxRect.width
+      const activeDefectBoxHeightScale = mainImgRect.height / activeDefectBoxRect.height
+      const activeDefectBoxScale = Math.min(activeDefectBoxWidthScale, activeDefectBoxHeightScale)
+
+      this.scale = renderScale
+      // 比例 * 0.8 为了美观，不撑满整个容器，且可以看到缺陷名称（该数值可以随意修改）
+      document.getElementById("imgBox").style.transform = `scale(${activeDefectBoxScale > 10 ? 10 : activeDefectBoxScale * 0.8})`
+    },
+
+    // 移除标签
+    handleClickDeleteLabel(info, i) {
+      this.$message.warning("待开发")
+    },
   },
 }
 </script>
 
 <style lang="scss" scoped>
 .container {
-  width: 60vw;
-  height: 90vh;
-  border: 1px black solid;
+  display: flex;
 
-  .img-Box {
+  .left {
     width: 60vw;
     height: 90vh;
-    overflow: hidden;
-    // overscroll-behavior-y:none;
-    .img {
-      transform: scale(1);
-      transition: transform 0.5s linear, width 0.5s linear, height 0.5s linear;
+    border: 1px black solid;
 
-      #main_img {
-        width: 100%;
-        height: 90vh;
-        object-fit: cover;
-        position: relative;
-        left: 0;
-        top: 0;
-        // background-image: url(./default.png);
-        background-size: contain;
-        background-repeat: no-repeat;
+    .img-Box {
+      width: 60vw;
+      height: 90vh;
+      overflow: hidden;
+      // overscroll-behavior-y:none;
+      .img {
+        transform: scale(1);
+        transition: transform 0.5s linear, width 0.5s linear, height 0.5s linear;
+
+        #main_img {
+          width: 100%;
+          height: 90vh;
+          object-fit: cover;
+          position: relative;
+          left: 0;
+          top: 0;
+          // background-image: url(./default.png);
+          background-size: contain;
+          background-repeat: no-repeat;
+        }
+      }
+    }
+  }
+  .right {
+    margin: 0 1vw;
+    width: 38vw;
+    height: 90vh;
+    border: 1px black solid;
+
+    .list-box {
+      width: 100%;
+      overflow-y: auto;
+      margin: 10px;
+
+      &::-webkit-scrollbar {
+        width: 0 !important;
+      }
+
+      p {
+        margin: 5px;
+      }
+
+      .box-container {
+        background-color: #f5f5f5;
+        border-radius: 12px;
+        padding: 5px;
+        width: 92%;
+
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+
+        .box-left {
+          .red {
+            color: #ff0000;
+          }
+
+          .yellow {
+            color: #f89b02;
+          }
+
+          .title {
+            width: 90%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            // cursor: pointer;
+          }
+        }
+        .box-right {
+          display: flex;
+          justify-content: space-evenly;
+          align-items: center;
+        }
       }
     }
   }

@@ -1,7 +1,9 @@
 <template>
   <el-button text @click="dialogVisible = true"> click to open the Dialog </el-button>
+  <el-button ref="aaaaa" @click="handleClickaaaaa"> click  </el-button>
 
-  <el-dialog v-model="dialogVisible" title="Tips" width="30%" :before-close="handleClose">
+
+  <!-- <el-dialog v-model="dialogVisible" title="Tips" width="30%" :before-close="handleClose">
     <span>This is a message</span>
     <template #footer>
       <span class="dialog-footer">
@@ -9,7 +11,7 @@
         <el-button type="primary" @click="dialogVisible = false"> Confirm </el-button>
       </span>
     </template>
-  </el-dialog>
+  </el-dialog> -->
 </template>
 
 <script lang="ts" setup>
@@ -17,16 +19,23 @@ import { ref } from "vue"
 import { ElMessageBox } from "element-plus"
 
 const dialogVisible = ref(false)
+const aaaaa = ref(null)
+
+
+const handleClickaaaaa = ()=>{
+  console.log(aaaaa);
+}
 
 const handleClose = (done: () => void) => {
-  ElMessageBox.confirm("Are you sure to close this dialog?")
-    .then(() => {
-      done()
-    })
-    .catch(() => {
-      // catch error
-    })
+  // ElMessageBox.confirm("Are you sure to close this dialog?")
+  //   .then(() => {
+  //     done()
+  //   })
+  //   .catch(() => {
+  //     // catch error
+  //   })
 }
+
 </script>
 <style scoped>
 .dialog-footer button:first-child {
